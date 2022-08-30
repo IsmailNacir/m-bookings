@@ -1,14 +1,9 @@
-﻿// ---------------------------------------------------------------------------
-// <copyright file="DataServiceQueryExtensions.cs" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-// ---------------------------------------------------------------------------
+﻿using System.Collections.Generic;
+using Microsoft.OData.Client;
+
 
 namespace Microsoft.Bookings.Client
 {
-    using System.Collections.Generic;
-
-    using Microsoft.OData.Client;
 
     public static class DataServiceQueryExtensions
     {
