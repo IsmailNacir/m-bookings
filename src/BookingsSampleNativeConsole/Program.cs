@@ -41,13 +41,14 @@ namespace BookingsSampleNativeConsole
                 .WithTenantId(tenantId)
                 .Build();
 
+                /*
                 Console.Write("Username:    ");
                 string username = Console.ReadLine();
                 if (string.IsNullOrEmpty(username))
                 {
                     Console.WriteLine("Update Sample to include your username");
                     return;
-                }
+                }*/
 
                 Console.Write("Password:    ");
                 SecureString password = new SecureString();
@@ -64,10 +65,10 @@ namespace BookingsSampleNativeConsole
                     Console.WriteLine("Password needs to be provided for the sample to work");
                     return;
                 }
-
+                
                 var authenticationResult = clientApplication.AcquireTokenByUsernamePassword(
                                     new[] { "Bookings.Read.All" },
-                                    username, password).ExecuteAsync().Result;
+                                    "relationclientsfront@formiris.org", password).ExecuteAsync().Result;
                 var graphService = new GraphService(
                     GraphService.ServiceRoot,
                     () => authenticationResult.CreateAuthorizationHeader());
@@ -149,8 +150,8 @@ namespace BookingsSampleNativeConsole
 
                 // Add an Appointment
                 var newAppointment = business.Appointments.NewEntityWithChangeTracking();
-                newAppointment.CustomerEmailAddress = "customer@contoso.com";
-                newAppointment.CustomerName = "John Doe";
+                newAppointment.CustomerEmailAddress = "test_from_application@gmail.com";
+                newAppointment.CustomerName = "Sabrina Doe";
                 newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
                 newAppointment.StaffMemberIds.Add(staff.Id);
                 newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
