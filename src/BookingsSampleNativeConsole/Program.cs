@@ -50,6 +50,7 @@ namespace BookingsSampleNativeConsole
                     return;
                 }*/
 
+                
                 Console.Write("Password:    ");
                 SecureString password = new SecureString();
                 ConsoleKeyInfo keyinfo;
@@ -69,21 +70,20 @@ namespace BookingsSampleNativeConsole
                 var authenticationResult = clientApplication.AcquireTokenByUsernamePassword(
                                     new[] { "Bookings.Read.All" },
                                     "relationclientsfront@formiris.org", password).ExecuteAsync().Result;
+
+                //var toto = clientApplication.
                 var graphService = new GraphService(
                     GraphService.ServiceRoot,
                     () => authenticationResult.CreateAuthorizationHeader());
 
-                // Fiddler makes it easy to look at the request/response payloads. Use it automatically if it is running.
-                // https://www.telerik.com/download/fiddler
-                if (System.Diagnostics.Process.GetProcessesByName("fiddler").Any())
-                {
-                    graphService.WebProxy = new WebProxy(new Uri("http://localhost:8888"), false);
-                }
 
                 // Get the list of booking businesses that the logged on user can see.
                 // NOTE: I'm not using 'async' in this sample for simplicity;
                 // the ODATA client library has full support for async invocations.
                 var bookingBusinesses = graphService.BookingBusinesses.ToArray();
+                var bookingBusiness = bookingBusinesses.FirstOrDefault(_ => _.DisplayName == "Support Mobile");
+
+               /*
                 foreach (var _ in bookingBusinesses)
                 {
                     Console.WriteLine(_.DisplayName);
@@ -106,6 +106,7 @@ namespace BookingsSampleNativeConsole
 
                 // See if the name matches one of the entities we have (this is searching the local array)
                 var bookingBusiness = bookingBusinesses.FirstOrDefault(_ => _.DisplayName == businessName);
+               
                 if (bookingBusiness == null)
                 {
                     // If we don't have a match, create a new bookingBusiness.
@@ -126,13 +127,24 @@ namespace BookingsSampleNativeConsole
                 {
                     Console.WriteLine("Using existing booking business.");
                 }
+               */
 
                 // Play with the newly minted booking business
                 var business = graphService.BookingBusinesses.ByKey(bookingBusiness.Id);
 
                 // Add an external staff member (these are easy, as we don't need to find another user in the AD).
                 // For an internal staff member, the application might query the user or the Graph to find other users.
+                var staffs = business.StaffMembers.ToArray();
                 var staff = business.StaffMembers.FirstOrDefault();
+                var staffWorkingHours = business.StaffMembers.FirstOrDefault().WorkingHours.ToList();
+                foreach(var _ in staffWorkingHours)
+                {
+                    if(_.TimeSlots.Count>=1)
+                    {
+                    Console.WriteLine(_.Day);
+                    }
+                }
+                /*
                 if (staff == null)
                 {
                     staff = business.StaffMembers.NewEntityWithChangeTracking();
@@ -146,7 +158,7 @@ namespace BookingsSampleNativeConsole
                 else
                 {
                     Console.WriteLine($"Using staff member {staff.DisplayName}");
-                }
+                }*/
 
                 // Add an Appointment
                 var newAppointment = business.Appointments.NewEntityWithChangeTracking();
