@@ -90,92 +90,201 @@ namespace BookingsSampleNativeConsole
                 string choiceNumber = Console.ReadLine();
                 string selectedDay = days[int.Parse(choiceNumber) - 1];
                 int defaultServiceDuration = (int)business.Services.First().DefaultDuration.TotalMinutes;
-                //DateTime[] crenaux = new DateTime[30]; // a refaire
                 List<DateTime> crenaux = new List<DateTime>();
 
                 var staffs = business.StaffMembers.ToArray();
+                var appointements = business.Appointments.ToArray();
+
                 for (int i = 0; i < staffs.Length; i++)
                 {
-                    var staffMemberWH = staffs[i].WorkingHours.ToList();
-                    foreach (var _ in staffMemberWH)
-                    {
-                        if (_.TimeSlots.Count > 0)
-                        {
-                            Console.WriteLine(_.Day);
-                            if (_.Day.ToString() == selectedDay)
-                            {
-                                int ct = 1;
-                                Console.WriteLine("Veuillez choisir un creneau");
-                                for (int j = 0; j < _.TimeSlots.Count; j++)
-                                {
+                    var toto = appointements.Where(ap => ap.StaffMemberIds.Contains(staffs[i].Id));
 
-                                    var sTime = _.TimeSlots[j].Start.ToString();
-                                    var eTime = _.TimeSlots[j].End.ToString();
+                    var staffMemberWH = staffs[i].WorkingHours.ToList();
+
+                    foreach (var wh in staffMemberWH)
+                    {
+                        if (wh.TimeSlots.Count > 0)
+                        {
+                            if (wh.Day.ToString() != selectedDay)
+                            {
+                                Console.WriteLine("Aucun de nos agent n'est disponible dans ce jour, veuillez choisir un autre !");
+                            }
+
+                            else
+                            {
+                                for (int j = 0; j < wh.TimeSlots.Count; j++)
+                                {
+                                    var sTime = wh.TimeSlots[j].Start.ToString();
+                                    var eTime = wh.TimeSlots[j].End.ToString();
                                     DateTime startTime = DateTime.Parse(sTime);
                                     DateTime endTime = DateTime.Parse(eTime);
                                     DateTime creneau = startTime;
 
-
                                     do
                                     {
-                                        creneau = creneau.AddMinutes(defaultServiceDuration);
-                                        Console.WriteLine($"({ct}) {creneau.TimeOfDay}");
                                         crenaux.Add(creneau);
-                                        ct++;
+                                        creneau = creneau.AddMinutes(defaultServiceDuration);
 
-                                    } while (creneau.TimeOfDay < endTime.TimeOfDay);
-
+                                    } while (creneau.AddMinutes(defaultServiceDuration) <= endTime);
 
                                 }
 
-                                Console.Write("Votre crenaux :");
-                                int indexOfCreneau =int.Parse(Console.ReadLine());
-                                
-                                foreach (var cr in crenaux)
-                                {
-                                    var index = crenaux.IndexOf(cr);
-                                    if(index+1 == indexOfCreneau)
-                                    {
-                                        selectedCreneau = cr;
-                                    }
-                                }
-
-                                // creat an appointement
-                                Console.Write("Donnez votre Email :");
-                                string email = Console.ReadLine();
-
-                                Console.Write("Donnez votre Nom :");
-                                string name = Console.ReadLine();
-
-                                
-                                var newAppointment = business.Appointments.NewEntityWithChangeTracking();
-                                newAppointment.CustomerEmailAddress = email;
-                                newAppointment.CustomerName = name;
-                                newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
-                                newAppointment.StaffMemberIds.Add(staffs[2].Id);
-                                newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
-                                //var start = DateTime.Today.AddDays(1).AddHours(13).ToUniversalTime();
-                                var start = selectedCreneau.ToUniversalTime();
-                                var end = start.AddMinutes(defaultServiceDuration);
-                                newAppointment.Start = new DateTimeTimeZone { DateTime = start.ToString("o"), TimeZone = "UTC" };
-                                newAppointment.End = new DateTimeTimeZone { DateTime = end.ToString("o"), TimeZone = "UTC" };
-                                Console.WriteLine("Creating appointment...");
-                                graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
-                                Console.WriteLine("Appointment created.");
-
-
-                            }
-                            else
-                            {
-                                Console.WriteLine("Aucun de nos agent n'est disponible dans ce jour, veuillez choisir un autre !");
                             }
                         }
-
                     }
-
-                    Console.WriteLine("");
-
                 }
+
+                int ct = 1;
+                var distinctCreneau = (List<DateTime>)crenaux.Distinct();
+
+                Console.WriteLine("Veuillez choisir un creneau :");
+
+                foreach (var creneau in distinctCreneau)
+                {
+                    Console.WriteLine($"({ct}) {creneau.TimeOfDay}");
+
+                    ct++;
+                }
+
+                Console.Write("Votre crenaux :");
+                int indexOfCreneau = int.Parse(Console.ReadLine());
+
+                foreach (var cr in distinctCreneau)
+                {
+                    var index = distinctCreneau.IndexOf(cr);
+
+                    if (index + 1 == indexOfCreneau)
+                    {
+                        selectedCreneau = cr;
+                    }
+                }
+
+                // hide creneau si déjà pris
+                /*
+                for (int i = 0; i < staffs.Length; i++)
+                {
+                    var wh = staffs[i].WorkingHours.ToArray();
+
+                    for (int j = 0; j < wh.Length; j++)
+                    {
+                        if (wh[j].TimeSlots.Count > 0)
+                        {
+                            for(k=0; k<)
+                        }
+                        
+                    }
+                }*/
+
+                // creat an appointement
+                Console.Write("Donnez votre Email :");
+                string email = Console.ReadLine();
+
+                Console.Write("Donnez votre Nom :");
+                string name = Console.ReadLine();
+
+
+                var newAppointment = business.Appointments.NewEntityWithChangeTracking();
+                newAppointment.CustomerEmailAddress = email;
+                newAppointment.CustomerName = name;
+                newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
+                newAppointment.StaffMemberIds.Add(staffs[2].Id);
+                newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
+                var start = selectedCreneau.ToUniversalTime();
+                var end = start.AddMinutes(defaultServiceDuration);
+                newAppointment.Start = new DateTimeTimeZone { DateTime = start.ToString("o"), TimeZone = "UTC" };
+                newAppointment.End = new DateTimeTimeZone { DateTime = end.ToString("o"), TimeZone = "UTC" };
+                Console.WriteLine("Creating appointment...");
+                graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
+                Console.WriteLine("Appointment created.");
+                Console.WriteLine("");
+
+
+                //for (int i = 0; i < staffs.Length; i++)
+                //{
+
+                //    var staffMemberWH = staffs[i].WorkingHours.ToList();
+                //    foreach (var _ in staffMemberWH)
+                //    {
+                //        if (_.TimeSlots.Count > 0)
+                //        {
+                //            if (_.Day.ToString() != selectedDay)
+                //            {
+                //                Console.WriteLine("Aucun de nos agent n'est disponible dans ce jour, veuillez choisir un autre !");
+                //            }
+
+                //            else
+                //            {
+                //                int ct = 1;
+                //                Console.WriteLine("Veuillez choisir un creneau :");
+                //                for (int j = 0; j < _.TimeSlots.Count; j++)
+                //                {
+
+                //                    var sTime = _.TimeSlots[j].Start.ToString();
+                //                    var eTime = _.TimeSlots[j].End.ToString();
+                //                    DateTime startTime = DateTime.Parse(sTime);
+                //                    DateTime endTime = DateTime.Parse(eTime);
+                //                    DateTime creneau = startTime;
+
+                //                    do
+                //                    {
+                //                        Console.WriteLine($"({ct}) {creneau.TimeOfDay}");
+                //                        creneau = creneau.AddMinutes(defaultServiceDuration);
+                //                        crenaux.Add(creneau);
+                //                        ct++;
+
+                //                    } while (creneau.AddMinutes(defaultServiceDuration) <= endTime);
+
+
+                //                }
+
+                //                Console.Write("Votre crenaux :");
+                //                int indexOfCreneau = int.Parse(Console.ReadLine());
+
+                //                foreach (var cr in crenaux)
+                //                {
+                //                    var index = crenaux.IndexOf(cr);
+                //                    if (index + 1 == indexOfCreneau)
+                //                    {
+                //                        selectedCreneau = cr;
+                //                    }
+                //                }
+
+                //                // creat an appointement
+                //                Console.Write("Donnez votre Email :");
+                //                string email = Console.ReadLine();
+
+                //                Console.Write("Donnez votre Nom :");
+                //                string name = Console.ReadLine();
+
+
+                //                var newAppointment = business.Appointments.NewEntityWithChangeTracking();
+                //                newAppointment.CustomerEmailAddress = email;
+                //                newAppointment.CustomerName = name;
+                //                newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
+                //                newAppointment.StaffMemberIds.Add(staffs[2].Id);
+                //                newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
+                //                //var start = DateTime.Today.AddDays(1).AddHours(13).ToUniversalTime();
+                //                var start = selectedCreneau.ToUniversalTime();
+                //                var end = start.AddMinutes(defaultServiceDuration);
+                //                newAppointment.Start = new DateTimeTimeZone { DateTime = start.ToString("o"), TimeZone = "UTC" };
+                //                newAppointment.End = new DateTimeTimeZone { DateTime = end.ToString("o"), TimeZone = "UTC" };
+                //                Console.WriteLine("Creating appointment...");
+                //                graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
+                //                Console.WriteLine("Appointment created.");
+
+
+                //            }
+
+                //        }
+
+                //    }
+
+                //    Console.WriteLine("");
+
+                //}
+
+
+
 
                 // In order for customers to interact with the booking business we need to publish its public page.
                 // We can also Unpublish() to hide it from customers, but where is the fun in that?
