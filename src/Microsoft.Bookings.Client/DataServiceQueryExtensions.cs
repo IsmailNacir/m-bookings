@@ -48,5 +48,18 @@ namespace Microsoft.Bookings.Client
         {
             return new DataServiceCollection<T>(entity)[0];
         }
+
+
+        //Delete Function 
+
+        //public static T DeleteEntity<T>(this DataServiceQuery<T> entitySet)
+        //    where T : new()
+        //{
+        //    var entitySetName = entitySet.Context.BaseUri.MakeRelativeUri(entitySet.RequestUri).ToString();
+        //    var changeTrackingCollection = new DataServiceCollection<T>(entitySet.Context, new List<T>(), TrackingMode.AutoChangeTracking, entitySetName, null, null);
+        //    var entity = new T();
+        //    changeTrackingCollection.Remove(entity);
+        //    return entity;
+        //}
     }
 }
