@@ -4,12 +4,9 @@ using System.Net;
 using System.Security;
 using Microsoft.Bookings.Client;
 using Microsoft.OData.Client;
-using System.Configuration;
 using Microsoft.Identity.Client;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
-using System.Globalization;
-using Microsoft.OData.Edm;
 
 namespace BookingsSampleNativeConsole
 {
@@ -37,12 +34,6 @@ namespace BookingsSampleNativeConsole
             return date;
         }
 
-        //Delete Function
-        //private bool DeleteApp(int appId)
-        //{
-        //    business.Appointments.
-        //    return true;
-        //}
 
         public static void Main()
         {
@@ -79,7 +70,6 @@ namespace BookingsSampleNativeConsole
                     GraphService.ServiceRoot,
                     () => authenticationResult.CreateAuthorizationHeader());
 
-
                 // Get the list of booking businesses that the logged on user can see.
                 // NOTE: I'm not using 'async' in this sample for simplicity;
                 // the ODATA client library has full support for async invocations.
@@ -93,51 +83,31 @@ namespace BookingsSampleNativeConsole
                 // For an internal staff member, the application might query the user or the Graph to find other users.
 
                 //affichage des 5 prochains jours ouvrés
-                //var c = 0;
-                string[] days = new string[5];
                 DateTime[] wokingDays = new DateTime[5];
-
-
-
-                /*for (int i = 0; i < 7; i++)
-                {
-                    var day = DateTime.Today.AddDays(i).ToString("dddd");
-
-
-                    if (day != "Saturday" && day != "Sunday")
-                    {
-                        Console.WriteLine($"({c + 1}) {day}");
-                        days[c] = day;
-
-                        c++;
-                    }
-
-                    if (c == 5) break;
-                }*/
-
                 var dt = GetNextWorkingDay(DateTime.Now.Date);
 
                 for (int i = 0; i < 5; i++)
                 {
                     Console.WriteLine($"({i + 1}) {dt.DayOfWeek}");
-                    //Console.WriteLine(dt.ToString("dd/MM/yyyy"));
                     wokingDays[i] = (dt);
                     dt = GetNextWorkingDay(dt);
                 }
 
                 Console.Write("Veuillez choisir un jour : ");
+
                 string choiceNumber = Console.ReadLine();
                 DateTime selectedDay = wokingDays[int.Parse(choiceNumber) - 1];
                 int defaultServiceDuration = (int)business.Services.First().DefaultDuration.TotalMinutes;
                 List<DateTime> crenaux = new List<DateTime>();
-
                 var staffs = business.StaffMembers.ToArray();
                 var appointements = business.Appointments.ToArray();
-                List<DateTime> startApps = new List<DateTime>();
+                var isNotAvailable = false;
 
+                // La liste des crèneau à afficher => gestion des doublons
                 for (int i = 0; i < staffs.Length; i++)
                 {
                     var staffApps = appointements.Where(ap => ap.StaffMemberIds.Contains(staffs[i].Id));
+                    List<DateTime> startApps = new List<DateTime>();
 
                     foreach (var sApp in staffApps)
                     {
@@ -153,6 +123,8 @@ namespace BookingsSampleNativeConsole
                             if (wh.Day.ToString() != selectedDay.DayOfWeek.ToString())
                             {
                                 Console.WriteLine("Aucun de nos agent n'est disponible dans ce jour, veuillez choisir un autre !");
+                                isNotAvailable = true;
+                                break;
                             }
 
                             else
@@ -162,11 +134,8 @@ namespace BookingsSampleNativeConsole
                                     var sTime = wh.TimeSlots[j].Start;
                                     var eTime = wh.TimeSlots[j].End;
 
-
                                     var startTime = new DateTime(selectedDay.Year, selectedDay.Month, selectedDay.Day, sTime.Hours, sTime.Minutes, sTime.Seconds);
                                     var endTime = new DateTime(selectedDay.Year, selectedDay.Month, selectedDay.Day, eTime.Hours, eTime.Minutes, eTime.Seconds);
-
-
                                     DateTime creneau = startTime;
 
                                     do
@@ -175,121 +144,125 @@ namespace BookingsSampleNativeConsole
                                         {
                                             crenaux.Add(creneau);
                                         }
-
                                         creneau = creneau.AddMinutes(defaultServiceDuration);
 
                                     } while (creneau.AddMinutes(defaultServiceDuration) <= endTime);
-
                                 }
-
                             }
                         }
                     }
+
+                    if (isNotAvailable) break;
                 }
 
-                int ct = 1;
-                var distinctCreneau = crenaux.Distinct().ToList();
-
-                Console.WriteLine("Veuillez choisir un creneau :");
-
-                foreach (var creneau in distinctCreneau)
+                if (!isNotAvailable)
                 {
-                    Console.WriteLine($"({ct}) {creneau.TimeOfDay}");
+                    int ct = 1;
+                    var distinctCreneau = crenaux.Distinct().ToList();
+                    distinctCreneau.Sort((x, y) => DateTime.Compare(x, y));
 
-                    ct++;
-                }
+                    Console.WriteLine("Veuillez choisir un creneau :");
 
-                Console.Write("Votre crenaux :");
-                int indexOfCreneau = int.Parse(Console.ReadLine());
-
-                foreach (var cr in distinctCreneau)
-                {
-                    var index = distinctCreneau.IndexOf(cr);
-
-                    if (index + 1 == indexOfCreneau)
+                    foreach (var creneau in distinctCreneau)
                     {
-                        selectedCreneau = cr;
-                    }
-                }
-
-                //Vote Staff
-                var staffId = "";
-
-                for (int i = 0; i < staffs.Length; i++)
-                {
-                    var staffApps = appointements.Where(ap => ap.StaffMemberIds.Contains(staffs[i].Id));
-                    foreach (var sApp in staffApps)
-                    {
-                        startApps.Add(DateTime.Parse(sApp.Start.DateTime.ToString()));
+                        Console.WriteLine($"({ct}) {creneau.TimeOfDay}");
+                        ct++;
                     }
 
-                    if (!startApps.Contains(selectedCreneau))
+                    Console.Write("Votre crenaux :");
+
+                    int indexOfCreneau = int.Parse(Console.ReadLine());
+
+                    foreach (var cr in distinctCreneau)
                     {
-                        staffId = staffs[i].Id;
-                        break;
+                        var index = distinctCreneau.IndexOf(cr);
+
+                        if (index + 1 == indexOfCreneau)
+                        {
+                            selectedCreneau = cr;
+                        }
                     }
-                }
-
-                // creat an appointement
-                Console.Write("Donnez votre Email :");
-                string email = Console.ReadLine();
-
-                Console.Write("Donnez votre Nom :");
-                string name = Console.ReadLine();
 
 
-                var newAppointment = business.Appointments.NewEntityWithChangeTracking();
-                newAppointment.CustomerEmailAddress = email;
-                newAppointment.CustomerName = name;
-                newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
-                newAppointment.StaffMemberIds.Add(staffId);
-                newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
-                DateTime start = new DateTime(selectedDay.Year, selectedDay.Month, selectedDay.Day, selectedCreneau.Hour, selectedCreneau.Minute, 00).ToUniversalTime();
+                    //Vote Staff en fonction de leur disponibilités 
+                    var staffId = "";
 
-                var end = start.AddMinutes(defaultServiceDuration);
-                newAppointment.Start = new DateTimeTimeZone { DateTime = start.ToString("o"), TimeZone = "UTC" };
-                newAppointment.End = new DateTimeTimeZone { DateTime = end.ToString("o"), TimeZone = "UTC" };
-                Console.WriteLine("Creating appointment...");
-                graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
-                Console.WriteLine("Appointment created.");
-                Console.WriteLine("");
+                    for (int i = 0; i < staffs.Length; i++)
+                    {
+                        var staffApps = appointements.Where(ap => ap.StaffMemberIds.Contains(staffs[i].Id));
+                        List<DateTime> startApps1 = new List<DateTime>();
 
-                Console.WriteLine("Voici votre RDV");
-                foreach (var appointment in business.Appointments.GetAllPages().Where(x => x.Id == newAppointment.Id))
-                {
-                    
-                    Console.WriteLine($"{DateTime.Parse(appointment.Start.DateTime).ToLocalTime()}: {appointment.ServiceName} with {appointment.CustomerName}");
-                }
-                Console.Write("Entrez X si vous voulez supprimer votre RDV : ");
-                string wantToDelet = Console.ReadLine();
-                if(wantToDelet == "X")
-                {
-                    var allApp = business.Appointments.GetAllPages();
-                    allApp = allApp.Where(x => x.Id != newAppointment.Id);
+                        foreach (var sApp in staffApps)
+                        {
+                            startApps1.Add(DateTime.Parse(sApp.Start.DateTime.ToString()));
+                        }
+
+                        var staffMemberWH = staffs[i].WorkingHours.ToList();
+
+                        foreach (var wh in staffMemberWH)
+                        {
+                            if ((wh.Day.ToString() == selectedCreneau.DayOfWeek.ToString()) &&
+                                wh.TimeSlots.Count > 0 &&
+                                !startApps1.Contains(selectedCreneau))
+                            {
+                                staffId = staffs[i].Id;
+                                break;
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(staffId)) break;
+
+                    }
+
+                    // creat an appointement
+                    Console.Write("Donnez votre Email :");
+                    string email = Console.ReadLine();
+
+                    Console.Write("Donnez votre Nom :");
+                    string name = Console.ReadLine();
+
+                    var newAppointment = business.Appointments.NewEntityWithChangeTracking();
+                    newAppointment.CustomerEmailAddress = email;
+                    newAppointment.CustomerName = name;
+                    newAppointment.CustomerNotes = "Synaps ID : 123456";
+                    newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
+                    newAppointment.StaffMemberIds.Add(staffId);
+                    newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
+                    DateTime start = new DateTime(selectedDay.Year, selectedDay.Month, selectedDay.Day, selectedCreneau.Hour, selectedCreneau.Minute, 00).ToUniversalTime();
+
+                    var end = start.AddMinutes(defaultServiceDuration);
+                    newAppointment.Start = new DateTimeTimeZone { DateTime = start.ToString("o"), TimeZone = "UTC" };
+                    newAppointment.End = new DateTimeTimeZone { DateTime = end.ToString("o"), TimeZone = "UTC" };
+                    Console.WriteLine("Creating appointment...");
                     graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
+                    Console.WriteLine("Appointment created.");
+                    Console.WriteLine("");
+
+                    Console.WriteLine("Voici votre RDV");
+                    foreach (var appointment in business.Appointments.GetAllPages().Where(x => x.Id == newAppointment.Id))
+                    {
+                        Console.WriteLine($"{DateTime.Parse(appointment.Start.DateTime).ToLocalTime()}: {appointment.ServiceName} with {appointment.CustomerName}");
+                    }
+                    Console.Write("Entrez X si vous voulez supprimer votre RDV : ");
+                    string wantToDelet = Console.ReadLine();
+                    if (wantToDelet == "X")
+                    {
+                        var allApp = business.Appointments.GetAllPages();
+                        allApp = allApp.Where(x => x.Id != newAppointment.Id);
+                        graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
+                    }
+
+                    // In order for customers to interact with the booking business we need to publish its public page.
+                    // We can also Unpublish() to hide it from customers, but where is the fun in that?
+                    Console.WriteLine("Publishing booking business public page...");
+                    business.Publish().Execute();
                 }
-                
-
-
-
-                // In order for customers to interact with the booking business we need to publish its public page.
-                // We can also Unpublish() to hide it from customers, but where is the fun in that?
-                Console.WriteLine("Publishing booking business public page...");
-                business.Publish().Execute();
-
             }
-
-            
-            
-               
-           
-
 
             catch (Exception e)
             {
                 Console.WriteLine(e);
             }
-
 
             Console.WriteLine("Done. Press any key to exit.");
             Console.ReadKey();
