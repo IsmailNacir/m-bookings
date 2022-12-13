@@ -34,7 +34,6 @@ namespace BookingsSampleNativeConsole
             return date;
         }
 
-
         public static void Main()
         {
             try
@@ -79,10 +78,7 @@ namespace BookingsSampleNativeConsole
                 // Play with the newly minted booking business
                 var business = graphService.BookingBusinesses.ByKey(bookingBusiness.Id);
 
-                // Add an external staff member (these are easy, as we don't need to find another user in the AD).
-                // For an internal staff member, the application might query the user or the Graph to find other users.
-
-                //affichage des 5 prochains jours ouvrés
+                //Display of the next 5 working days
                 DateTime[] wokingDays = new DateTime[5];
                 var dt = GetNextWorkingDay(DateTime.Now.Date);
 
@@ -103,7 +99,7 @@ namespace BookingsSampleNativeConsole
                 var appointements = business.Appointments.ToArray();
                 var isNotAvailable = false;
 
-                // La liste des crèneau à afficher => gestion des doublons
+                // The list of slots to display => management of duplicates
                 for (int i = 0; i < staffs.Length; i++)
                 {
                     var staffApps = appointements.Where(ap => ap.StaffMemberIds.Contains(staffs[i].Id));
@@ -183,8 +179,7 @@ namespace BookingsSampleNativeConsole
                         }
                     }
 
-
-                    //Vote Staff en fonction de leur disponibilités 
+                    // Choice of team member based on availability
                     var staffId = "";
 
                     for (int i = 0; i < staffs.Length; i++)
@@ -214,7 +209,7 @@ namespace BookingsSampleNativeConsole
 
                     }
 
-                    // creat an appointement
+                    // Create an appointement
                     Console.Write("Donnez votre Email :");
                     string email = Console.ReadLine();
 
@@ -225,7 +220,7 @@ namespace BookingsSampleNativeConsole
                     newAppointment.CustomerEmailAddress = email;
                     newAppointment.CustomerName = name;
                     newAppointment.CustomerNotes = "Synaps ID : 123456";
-                    newAppointment.ServiceId = business.Services.First().Id; // assuming we didn't deleted all services; we might want to double check first like we did with staff.
+                    newAppointment.ServiceId = business.Services.First().Id;
                     newAppointment.StaffMemberIds.Add(staffId);
                     newAppointment.Reminders.Add(new BookingReminder { Message = "Hello", Offset = TimeSpan.FromHours(1), Recipients = BookingReminderRecipients.AllAttendees });
                     DateTime start = new DateTime(selectedDay.Year, selectedDay.Month, selectedDay.Day, selectedCreneau.Hour, selectedCreneau.Minute, 00).ToUniversalTime();
@@ -243,19 +238,15 @@ namespace BookingsSampleNativeConsole
                     {
                         Console.WriteLine($"{DateTime.Parse(appointment.Start.DateTime).ToLocalTime()}: {appointment.ServiceName} with {appointment.CustomerName}");
                     }
+
                     Console.Write("Entrez X si vous voulez supprimer votre RDV : ");
                     string wantToDelet = Console.ReadLine();
+
                     if (wantToDelet == "X")
                     {
-                        var allApp = business.Appointments.GetAllPages();
-                        allApp = allApp.Where(x => x.Id != newAppointment.Id);
+                        business.Appointments.Context.DeleteObject(newAppointment);
                         graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
                     }
-
-                    // In order for customers to interact with the booking business we need to publish its public page.
-                    // We can also Unpublish() to hide it from customers, but where is the fun in that?
-                    Console.WriteLine("Publishing booking business public page...");
-                    business.Publish().Execute();
                 }
             }
 
