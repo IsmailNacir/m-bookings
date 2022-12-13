@@ -245,7 +245,7 @@ namespace BookingsSampleNativeConsole
                     if (wantToDelet == "X")
                     {
                         business.Appointments.Context.DeleteObject(newAppointment);
-                        graphService.SaveChanges(SaveChangesOptions.PostOnlySetProperties);
+                        business.Context.SaveChanges();
                     }
                 }
             }
